@@ -1,31 +1,623 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sound Detector Dashboard</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121218; color: #ffffff; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; background: #1a1a24; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        h1 { color: #00e5ff; font-size: 24px; margin-bottom: 20px; }
-        .card { background: #252535; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #353545; }
-        .card h3 { margin: 0 0 10px 0; color: #a0a0b0; font-size: 14px; }
-        .val { font-size: 40px; font-weight: bold; color: #ffffff; }
-        .status-box { padding: 15px; border-radius: 8px; font-weight: bold; font-size: 18px; margin-top: 15px; background-color: #00c853; color: #000; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP32 CYD Sound Monitor</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-soft: #121b2d;
+      --panel: #18253d;
+      --panel-2: #1e2f46;
+      --line: #2d466d;
+      --text: #edf4ff;
+      --muted: #a9bfdc;
+      --cyan: #44d9ff;
+      --green: #1ee7a5;
+      --yellow: #ffd166;
+      --red: #ff5f7d;
+      --purple: #9b8cff;
+      --shadow: rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #09111d 0%, #101d31 100%);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .container {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      background: rgba(9, 17, 29, 0.8);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      z-index: 50;
+    }
+
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 70px;
+    }
+
+    .brand {
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--cyan);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .hero {
+      padding: 88px 0 48px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 28px;
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(68, 217, 255, 0.12);
+      border: 1px solid rgba(68, 217, 255, 0.3);
+      color: var(--cyan);
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: clamp(2.2rem, 4vw, 4rem);
+      line-height: 1.1;
+      margin: 18px 0 20px;
+    }
+
+    h2 {
+      font-size: clamp(1.6rem, 2vw, 2.4rem);
+      margin: 0 0 18px;
+    }
+
+    .lead {
+      font-size: 1.08rem;
+      color: var(--muted);
+      max-width: 62ch;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan), #4d7dff);
+      color: #04111c;
+      box-shadow: 0 12px 24px rgba(68, 217, 255, 0.25);
+    }
+
+    .btn-secondary {
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+    }
+
+    .hero-panel {
+      background: linear-gradient(180deg, rgba(24, 37, 61, 0.96), rgba(15, 23, 36, 0.96));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 18px 42px var(--shadow);
+    }
+
+    .mini-screen {
+      background: linear-gradient(180deg, #0d1320, #101827);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .screen-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 18px;
+    }
+
+    .signal {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .dot.red { background: var(--red); }
+    .dot.yellow { background: var(--yellow); }
+    .dot.green { background: var(--green); }
+
+    .meter {
+      background: rgba(255,255,255,0.03);
+      padding: 16px;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 14px;
+      margin-bottom: 12px;
+    }
+
+    .meter-label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+    }
+
+    .bar {
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+
+    .bar > span {
+      display: block;
+      height: 100%;
+      width: 68%;
+      background: linear-gradient(90deg, var(--green), var(--yellow), var(--red));
+      border-radius: inherit;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 800;
+      margin-top: 18px;
+      background: rgba(30, 231, 165, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(30, 231, 165, 0.35);
+    }
+
+    section {
+      padding: 28px 0;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 22px;
+      margin-top: 20px;
+    }
+
+    .card {
+      background: rgba(24, 37, 61, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 16px 36px var(--shadow);
+    }
+
+    .card h3 {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric {
+      font-size: clamp(2rem, 4vw, 2.6rem);
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 20px;
+    }
+
+    ul.check-list {
+      padding-left: 20px;
+      color: var(--text);
+      margin: 0;
+    }
+
+    ul.check-list li {
+      margin-bottom: 8px;
+      color: var(--muted);
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 500px;
+      background: rgba(24, 37, 61, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      vertical-align: top;
+    }
+
+    th {
+      background: rgba(255,255,255,0.03);
+      color: var(--cyan);
+      font-size: 0.9rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .code-block {
+      background: rgba(8, 12, 18, 0.9);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      color: #d9ebff;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .badge-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(155, 140, 255, 0.12);
+      color: #d7d0ff;
+      border: 1px solid rgba(155, 140, 255, 0.2);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .notice {
+      background: linear-gradient(135deg, rgba(255, 209, 102, 0.09), rgba(255, 95, 125, 0.09));
+      border: 1px solid rgba(255,209,102,0.25);
+      border-radius: 16px;
+      padding: 18px 20px;
+      color: var(--muted);
+      margin-top: 18px;
+    }
+
+    footer {
+      padding: 20px 0 42px;
+      color: var(--muted);
+      text-align: center;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      margin-top: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .hero-grid,
+      .grid-2,
+      .cards {
+        grid-template-columns: 1fr;
+      }
+
+      .nav {
+        flex-direction: column;
+        justify-content: center;
+        padding: 14px 0;
+      }
+
+      .nav-links {
+        justify-content: center;
+        padding-top: 6px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🔊 SOUND MONITORING</h1>
-        <div class="card">
-            <h3>ADC VALUE</h3>
-            <div class="val" id="adcVal">1695</div>
-        </div>
-        <div class="card">
-            <h3>LOUD EVENTS</h3>
-            <div class="val" id="events" style="color: #ffd600;">25</div>
-        </div>
-        <div class="status-box" id="status">STATUS: QUIET</div>
+  <header>
+    <div class="container nav">
+      <div class="brand">ESP32 CYD SOUND MONITOR</div>
+      <nav class="nav-links">
+        <a href="#overview">ภาพรวม</a>
+        <a href="#hardware">Hardware</a>
+        <a href="#structure">โครงสร้าง</a>
+        <a href="#build">Build</a>
+      </nav>
     </div>
+  </header>
+
+  <main class="container">
+    <section class="hero" id="overview">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Project Overview</div>
+          <h1>ระบบตรวจจับเสียงดังและเตือนภัยอัตโนมัติด้วย ESP32 CYD</h1>
+          <p class="lead">
+            โปรเจ็กต์นี้ออกแบบสำหรับ ESP32 CYD เพื่อ monitor ระดับเสียงแบบเรียลไทม์ผ่านเซ็นเซอร์เสียง
+            และแสดงผลบนจอ TFT ขนาด 2.8 นิ้วแบบสี เพื่อช่วยติดตามสถานะเสียงแบบทันที
+            พร้อมระบบแจ้งเตือนตามระดับความดัง
+          </p>
+          <div class="button-row">
+            <a class="btn btn-primary" href="#hardware">ดูรายละเอียด Hardware</a>
+            <a class="btn btn-secondary" href="#structure">ดูโครงสร้างโปรเจ็กต์</a>
+          </div>
+        </div>
+
+        <div class="hero-panel">
+          <div class="mini-screen">
+            <div class="screen-header">
+              <span>Sound Monitor</span>
+              <div class="signal">
+                <span class="dot red"></span>
+                <span class="dot yellow"></span>
+                <span class="dot green"></span>
+              </div>
+            </div>
+
+            <div class="meter">
+              <div class="meter-label">
+                <span>ADC</span>
+                <strong>1695</strong>
+              </div>
+              <div class="bar"><span></span></div>
+            </div>
+
+            <div class="meter">
+              <div class="meter-label">
+                <span>Loud Events</span>
+                <strong>25</strong>
+              </div>
+              <div class="bar"><span style="width: 58%"></span></div>
+            </div>
+
+            <div class="status-pill">STATUS: QUIET</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>เกี่ยวกับโครงงาน</h2>
+      <div class="cards">
+        <article class="card">
+          <h3>ผู้จัดทำ</h3>
+          <div class="metric">นายณัฐวุฒิ ชิตมน</div>
+        </article>
+        <article class="card">
+          <h3>ประเภท</h3>
+          <div class="metric">IoT / Embedded</div>
+        </article>
+        <article class="card">
+          <h3>จอแสดงผล</h3>
+          <div class="metric">TFT 2.8&quot;</div>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <h2>วัตถุประสงค์</h2>
+      <div class="grid-2">
+        <div class="card">
+          <ul class="check-list">
+            <li>อ่านค่า analog จากเซ็นเซอร์เสียง</li>
+            <li>ตรวจจับสัญญาณเสียงดังจาก digital output (DO)</li>
+            <li>นับจำนวนเหตุการณ์เสียงดังและแสดงผลบนหน้าจอ</li>
+            <li>แสดงสถานะเสียงแบบเรียลไทม์</li>
+          </ul>
+        </div>
+        <div class="card">
+          <ul class="check-list">
+            <li>Quiet: สงบ</li>
+            <li>Warning: มีเสียงดังแต่ยังไม่ถึงระดับ alarm</li>
+            <li>Alarm: เสียงดังเกิน threshold</li>
+            <li>ใช้ร่วมกับ PlatformIO ได้ทันที</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="hardware">
+      <h2>ฟีเจอร์หลัก</h2>
+      <div class="badge-list">
+        <span class="badge">จอ TFT แบบสี</span>
+        <span class="badge">ADC Real-time</span>
+        <span class="badge">Loud events counter</span>
+        <span class="badge">Banner warning</span>
+        <span class="badge">PlatformIO ready</span>
+      </div>
+    </section>
+
+    <section>
+      <h2>การตั้งค่า Hardware</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>อุปกรณ์</th>
+              <th>การเชื่อมต่อ</th>
+              <th>รายละเอียด</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>เซ็นเซอร์เสียง</td>
+              <td>AO → GPIO 27<br>DO → GPIO 22<br>VCC → 3.3V หรือ 5V<br>GND → GND</td>
+              <td>อ่านค่า analog และ digital สำหรับตรวจจับแหล่งเสียง</td>
+            </tr>
+            <tr>
+              <td>จอ TFT</td>
+              <td>MISO = GPIO 12<br>MOSI = GPIO 13<br>SCLK = GPIO 14<br>CS = GPIO 15<br>DC = GPIO 2<br>RST = GPIO 12<br>BL = GPIO 21</td>
+              <td>ใช้ SPI และ TFT_eSPI เพื่อแสดงค่าสถานะแบบสี</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="structure">
+      <h2>โครงสร้างโปรเจ็กต์</h2>
+      <div class="code-block">ESP32 CYD/
+├── src/
+│   └── main.cpp         # โค้ดหลักของโปรแกรม
+├── include/             # ไฟล์ header (ถ้ามี)
+├── lib/                 # ไลบรารีเพิ่มเติม
+├── test/                # ไฟล์ทดสอบ
+├── platformio.ini       # ตั้งค่า PlatformIO
+├── .gitignore
+└── README.md            # เอกสารโปรเจ็กต์</div>
+    </section>
+
+    <section>
+      <h2>ไฟล์หลักที่ใช้งาน</h2>
+      <div class="stack">
+        <div class="card">
+          <strong>src/main.cpp</strong>
+          <p>ทำหน้าที่อ่านค่าเสียง คำนวณสถานะ และอัปเดตหน้าจอ</p>
+        </div>
+        <div class="card">
+          <strong>platformio.ini</strong>
+          <p>กำหนด board, framework, dependency และ pin mapping</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>ไลบรารีที่ใช้</h2>
+      <div class="badge-list">
+        <span class="badge">TFT_eSPI</span>
+        <span class="badge">Adafruit MPU6050</span>
+        <span class="badge">Adafruit Unified Sensor</span>
+        <span class="badge">XPT2046 Touchscreen</span>
+      </div>
+    </section>
+
+    <section id="build">
+      <h2>วิธี build และ upload</h2>
+      <div class="code-block">1. เปิดโฟลเดอร์โปรเจ็กต์ใน VS Code
+2. ตรวจสอบว่า PlatformIO extension ถูกติดตั้งแล้ว
+3. รันคำสั่งต่อไปนี้:
+
+pio run
+pio run --target upload</div>
+      <div class="notice">
+        สามารถทำงานผ่าน VS Code Tasks ที่มีอยู่แล้ว เพื่อให้กระบวนการ build และ upload ง่ายขึ้น
+      </div>
+    </section>
+
+    <section>
+      <h2>การทำงานของโปรแกรม</h2>
+      <div class="card">
+        <ul class="check-list">
+          <li>เริ่มต้นด้วยการ initialize จอ TFT และตั้งค่าเริ่มต้น UI</li>
+          <li>วนลูปอ่านค่า analog จาก AO และ state จาก DO</li>
+          <li>เมื่อ DO เปลี่ยนจาก HIGH เป็น LOW จะนับว่าเกิดเหตุการณ์เสียงดังขึ้น</li>
+          <li>หากมีเสียงดังต่อเนื่องเกินช่วงเวลา จะรีเซ็ตตัวนับ</li>
+          <li>ระบบคำนวณสถานะตามค่า analog และจำนวนเหตุการณ์</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>สถานะที่แสดงผล</h2>
+      <div class="grid-2">
+        <div class="card">
+          <ul class="check-list">
+            <li><strong>QUIET</strong> — สงบ</li>
+            <li><strong>WARNING</strong> — มีเสียงดังแต่ยังไม่ถึงระดับ alarm</li>
+            <li><strong>ALARM</strong> — เสียงดังเกิน threshold</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="code-block">if (soundHits >= 5 || analogVal > 2800) {
+  currentState = 2; // Alarm
+} else if (soundHits >= 1 || analogVal > 2000) {
+  currentState = 1; // Warning
+}</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>หมายเหตุและสรุป</h2>
+      <div class="card">
+        <ul class="check-list">
+          <li>วงจรนี้ใช้ ESP32 CYD บน PlatformIO</li>
+          <li>อาจต้องปรับค่า pin และความสว่างของหน้าจอให้เข้ากับอุปกรณ์จริง</li>
+          <li>ถ้าแต่ละหน่วยของเซ็นเซอร์มีระดับ noise ต่างกัน ควรปรับ threshold ให้เหมาะสม</li>
+          <li>โปรแกรมนี้เป็นตัวอย่างการใช้งาน ESP32 CYD ร่วมกับเซ็นเซอร์เสียงและจอ TFT เพื่อแสดงสถานะเสียงแบบเรียลไทม์ พร้อมระบบเตือน warning และ alarm</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">ESP32 CYD Sound Monitor • ระบบตรวจจับเสียงดังและเตือนภัยอัตโนมัติ</div>
+  </footer>
 </body>
 </html>
+
