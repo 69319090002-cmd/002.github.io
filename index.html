@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Detector Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121218; color: #ffffff; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; background: #1a1a24; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h1 { color: #00e5ff; font-size: 24px; margin-bottom: 20px; }
+        .card { background: #252535; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #353545; }
+        .card h3 { margin: 0 0 10px 0; color: #a0a0b0; font-size: 14px; }
+        .val { font-size: 40px; font-weight: bold; color: #ffffff; }
+        .status-box { padding: 15px; border-radius: 8px; font-weight: bold; font-size: 18px; margin-top: 15px; background-color: #00c853; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔊 SOUND MONITORING</h1>
+        <div class="card">
+            <h3>ADC VALUE</h3>
+            <div class="val" id="adcVal">1695</div>
+        </div>
+        <div class="card">
+            <h3>LOUD EVENTS</h3>
+            <div class="val" id="events" style="color: #ffd600;">25</div>
+        </div>
+        <div class="status-box" id="status">STATUS: QUIET</div>
+    </div>
+</body>
+</html>
